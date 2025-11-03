@@ -150,7 +150,8 @@
     function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
     function loadProducts() {
-        state.products = productsSeed;
+        const custom = JSON.parse(localStorage.getItem('productsCustom') || '[]');
+        state.products = productsSeed.concat(custom);
     }
 
     function productMatches(p) {
@@ -203,7 +204,7 @@
             });
 
             $('[data-action="add"]', node).addEventListener('click', () => addToCart(p.id));
-            $('[data-action="details"]', node).addEventListener('click', () => alertDetails(p));
+            $('[data-action="details"]', node).addEventListener('click', () => openProductModal(p));
 
             container.appendChild(node);
         });
@@ -215,8 +216,29 @@
         });
     }
 
-    function alertDetails(p) {
-        alert(`${p.title[state.lang]}\n\n${p.desc[state.lang]}`);
+    function openProductModal(p) {
+        const dlg = $('#productModal');
+        $('#productTitle').textContent = p.title[state.lang];
+        $('#productImage').src = p.img;
+        $('#productImage').alt = p.title[state.lang];
+        $('#productDesc').textContent = p.desc[state.lang];
+        $('#productPrice').textContent = formatPrice(p.price);
+        const ul = $('#productSpecs');
+        ul.innerHTML = '';
+        const specs = p.specs || [];
+        specs.forEach(([k, v]) => {
+            const li = document.createElement('li');
+            li.textContent = `${k}: ${v}`;
+            ul.appendChild(li);
+        });
+        $('#productWishlist').textContent = state.wishlist.has(p.id) ? '❤️' : '♡';
+        $('#productWishlist').onclick = () => {
+            toggleWishlist(p.id);
+            $('#productWishlist').textContent = state.wishlist.has(p.id) ? '❤️' : '♡';
+        };
+        $('#buyNowBtn').onclick = () => openOrderModal(p);
+        $('#productClose').onclick = () => dlg.close();
+        dlg.showModal();
     }
 
     function toggleWishlist(id) {
@@ -313,6 +335,138 @@
         });
     }
 
+    // ORDER FLOW
+    let currentOrderProduct = null;
+    let currentStep = 1;
+
+    function openOrderModal(product) {
+        currentOrderProduct = product;
+        currentStep = 1;
+        const dlg = $('#orderModal');
+        $('#orderProductMini').innerHTML = `<span>${product.title[state.lang]}</span><strong>${formatPrice(product.price)}</strong>`;
+        setStep(1);
+        $('#orderClose').onclick = () => dlg.close();
+        $('#prevStep').onclick = () => setStep(Math.max(1, currentStep - 1));
+        $('#nextStep').onclick = () => setStep(Math.min(3, currentStep + 1));
+        $('#orderForm').onsubmit = handleConfirmOrder;
+        dlg.showModal();
+    }
+
+    function setStep(step) {
+        currentStep = step;
+        $$('.steps .step').forEach(s => s.hidden = s.getAttribute('data-step') !== String(step));
+        $('#prevStep').disabled = step === 1;
+        $('#nextStep').hidden = step === 3;
+        $('#confirmOrder').hidden = step !== 3;
+    }
+
+    function handleConfirmOrder(e) {
+        e.preventDefault();
+        const form = e.currentTarget;
+        if (!form.reportValidity()) return;
+        const data = Object.fromEntries(new FormData(form).entries());
+        const orderId = `ORD-${Date.now().toString(36).toUpperCase()}`;
+        const order = {
+            id: orderId,
+            product: {
+                id: currentOrderProduct.id,
+                title: currentOrderProduct.title[state.lang],
+                price: currentOrderProduct.price
+            },
+            customer: {
+                name: data.name,
+                phone: data.phone,
+                address: data.address,
+                landmark: data.landmark,
+                notes: data.notes || ''
+            },
+            currency: state.currency,
+            lang: state.lang,
+            createdAt: new Date().toISOString()
+        };
+        downloadOrderPdf(order);
+        tryNotify(order);
+        const msg = state.lang === 'ar' ? 'تم تثبيت الحجز بنجاح' : 'Reservation confirmed successfully';
+        alert(`${msg}\n${order.id}`);
+        $('#orderModal').close();
+    }
+
+    function downloadOrderPdf(order) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const title = order.lang === 'ar' ? 'فاتورة طلب' : 'Order Invoice';
+        doc.setFontSize(16);
+        doc.text(title, 14, 20);
+        doc.setFontSize(11);
+        doc.text(`Order: ${order.id}`, 14, 30);
+        doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`, 14, 36);
+        doc.text(`Product: ${order.product.title}`, 14, 46);
+        doc.text(`Price: ${new Intl.NumberFormat(order.lang === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: order.currency }).format(order.product.price)}`, 14, 52);
+        doc.text(`Name: ${order.customer.name}`, 14, 62);
+        doc.text(`Phone: ${order.customer.phone}`, 14, 68);
+        doc.text(`Address: ${order.customer.address}`, 14, 74);
+        doc.text(`Landmark: ${order.customer.landmark}`, 14, 80);
+        if (order.customer.notes) doc.text(`Notes: ${order.customer.notes}`, 14, 90);
+        doc.save(`order-${order.id}.pdf`);
+    }
+
+    function tryNotify(order) {
+        const text = `New order ${order.id}\n${order.product.title} - ${order.product.price} ${order.currency}\n${order.customer.name} / ${order.customer.phone}`;
+        // Desktop notification
+        if ('Notification' in window) {
+            if (Notification.permission === 'granted') new Notification('New order', { body: text });
+            else if (Notification.permission !== 'denied') Notification.requestPermission().then(p => { if (p === 'granted') new Notification('New order', { body: text }); });
+        }
+        // WhatsApp share (owner can edit phone in code or just copy)
+        const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        console.log('WhatsApp share:', wa);
+        // Telegram share
+        const tg = `https://t.me/share/url?url=${encodeURIComponent(location.href)}&text=${encodeURIComponent(text)}`;
+        console.log('Telegram share:', tg);
+    }
+
+    // ADD PRODUCT
+    async function handleAddProductSubmit(e) {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const fd = new FormData(form);
+        const file = fd.get('image');
+        const dataUrl = await fileToDataUrl(file);
+        const specsRaw = (fd.get('specs') || '').toString().split(/\r?\n/).filter(Boolean);
+        const specs = specsRaw.map(line => {
+            const idx = line.indexOf(':');
+            if (idx === -1) return [line.trim(), ''];
+            return [line.slice(0, idx).trim(), line.slice(idx + 1).trim()];
+        });
+        const product = {
+            id: `c_${Date.now().toString(36)}`,
+            title: { ar: fd.get('title_ar'), en: fd.get('title_en') },
+            desc: { ar: fd.get('desc_ar'), en: fd.get('desc_en') },
+            price: parseFloat(fd.get('price')),
+            category: fd.get('category'),
+            img: dataUrl,
+            specs,
+            tags: []
+        };
+        const existing = JSON.parse(localStorage.getItem('productsCustom') || '[]');
+        existing.push(product);
+        localStorage.setItem('productsCustom', JSON.stringify(existing));
+        $('#addProductModal').close();
+        form.reset();
+        loadProducts();
+        initCategories();
+        renderProducts();
+    }
+
+    function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
     function setupEvents() {
         $('#themeToggle').addEventListener('click', toggleTheme);
         $('#langToggle').addEventListener('click', toggleLang);
@@ -344,7 +498,12 @@
             renderProducts();
         }));
 
-        // No payment flow
+        // Order modal events wired in openOrderModal
+
+        // Add product FAB
+        $('#addProductFab').addEventListener('click', () => $('#addProductModal').showModal());
+        $('#addProductClose').addEventListener('click', (e) => { e.preventDefault(); $('#addProductModal').close(); });
+        $('#addProductForm').addEventListener('submit', handleAddProductSubmit);
 
         // mobile menu toggle visual only
         $('.menu-toggle').addEventListener('click', (e) => {
