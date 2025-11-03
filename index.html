@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilingual Store | متجر ثنائي اللغة</title>
+    <meta name="theme-color" content="#0ea5e9">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header" role="banner">
+        <div class="container header-inner">
+            <button class="menu-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+            <a class="logo" href="#" aria-label="Homepage">
+                <span class="logo-mark">🛍️</span>
+                <span class="logo-text" data-i18n="brand">Bilingual Store</span>
+            </a>
+            <nav class="site-nav" aria-label="Primary">
+                <a href="#" class="nav-link active" data-i18n="nav.home">الرئيسية</a>
+                <a href="#" class="nav-link" data-i18n="nav.shop">المتجر</a>
+                <a href="#" class="nav-link" data-i18n="nav.deals">العروض</a>
+                <a href="#" class="nav-link" data-i18n="nav.contact">تواصل</a>
+            </nav>
+            <div class="header-actions">
+                <div class="search">
+                    <input id="searchInput" type="search" placeholder="ابحث عن منتج..." data-i18n-placeholder="search.placeholder" aria-label="Search products">
+                </div>
+                <button id="themeToggle" class="icon-btn" aria-label="Toggle theme">🌙</button>
+                <button id="langToggle" class="pill" aria-label="Toggle language">AR</button>
+                <button id="cartToggle" class="icon-btn" aria-label="Open cart" data-count="0">🛒</button>
+            </div>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container hero-inner">
+            <div class="hero-copy">
+                <h1 data-i18n="hero.title">تسوق بذكاء. تجربة سلسة.</h1>
+                <p class="muted" data-i18n="hero.subtitle">واجهات احترافية، سرعة، وتعدد لغات.</p>
+                <div class="hero-cta">
+                    <a href="#products" class="btn primary" data-i18n="hero.ctaShop">تسوق الآن</a>
+                    <button id="viewDeals" class="btn ghost" data-i18n="hero.ctaDeals">اكتشف العروض</button>
+                </div>
+            </div>
+            <picture class="hero-art" aria-hidden="true">
+                <img loading="lazy" src="https://images.unsplash.com/photo-1512295767273-ac109ac3acfa?q=80&w=1200&auto=format&fit=crop" alt="Shopping illustration">
+            </picture>
+        </div>
+    </section>
+
+    <main id="main" class="container" role="main">
+        <section class="toolbar" aria-label="Filters and sorting">
+            <div class="filters">
+                <select id="categoryFilter" aria-label="Category filter">
+                    <option value="all" data-i18n="filters.all">كل الأقسام</option>
+                </select>
+                <select id="sortSelect" aria-label="Sort products">
+                    <option value="pop" data-i18n="sort.popular">الأكثر شهرة</option>
+                    <option value="priceAsc" data-i18n="sort.priceAsc">السعر: من الأقل للأعلى</option>
+                    <option value="priceDesc" data-i18n="sort.priceDesc">السعر: من الأعلى للأقل</option>
+                    <option value="new" data-i18n="sort.new">الأحدث</option>
+                </select>
+            </div>
+            <div class="view-toggles" role="group" aria-label="View toggles">
+                <button class="icon-btn" data-view="grid" aria-pressed="true">🔳</button>
+                <button class="icon-btn" data-view="list" aria-pressed="false">📋</button>
+            </div>
+        </section>
+
+        <section id="products" class="products" aria-live="polite">
+            <!-- Products injected by app.js -->
+        </section>
+    </main>
+
+    <aside id="cartDrawer" class="drawer" aria-label="Shopping cart" aria-hidden="true">
+        <div class="drawer-header">
+            <h2 data-i18n="cart.title">سلة التسوق</h2>
+            <button class="icon-btn" id="cartClose" aria-label="Close cart">✕</button>
+        </div>
+        <div id="cartItems" class="drawer-body">
+            <!-- Cart items -->
+        </div>
+        <div class="drawer-footer">
+            <div class="totals">
+                <span data-i18n="cart.subtotal">الإجمالي</span>
+                <strong id="cartTotal">0</strong>
+            </div>
+        </div>
+    </aside>
+
+    <footer class="site-footer">
+        <div class="container footer-inner">
+            <p class="muted">© <span id="year"></span> <span data-i18n="brand">Bilingual Store</span></p>
+            <div class="inline">
+                <button id="currencyToggle" class="pill" aria-label="Toggle currency">USD</button>
+                <a href="#" class="muted" data-i18n="footer.privacy">الخصوصية</a>
+                <a href="#" class="muted" data-i18n="footer.terms">الشروط</a>
+            </div>
+        </div>
+    </footer>
+
+    <template id="productCardTemplate">
+        <article class="card" data-id="">
+            <button class="wishlist" aria-label="Add to wishlist">♡</button>
+            <picture class="thumb">
+                <img loading="lazy" alt="" />
+            </picture>
+            <div class="card-body">
+                <h3 class="card-title"></h3>
+                <p class="card-desc muted"></p>
+                <div class="price-row">
+                    <span class="price"></span>
+                    <span class="badge" hidden></span>
+                </div>
+                <div class="card-actions">
+                    <button class="btn" data-action="details" data-i18n="product.details">تفاصيل</button>
+                    <button class="btn primary" data-action="add" data-i18n="product.addToCart">أضف للسلة</button>
+                </div>
+            </div>
+        </article>
+    </template>
+
+    <script src="app.js" defer></script>
+</body>
+</html>
+
+
